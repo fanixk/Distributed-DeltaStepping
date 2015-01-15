@@ -27,15 +27,28 @@ namespace DistributedDeltaStepping
                 (arc => cost[graph.U(arc)] + cost[graph.V(arc)]); // a cost of an arc will be the sum of the costs of the two nodes
 
             List<DirectEdge> directEdges = new List<DirectEdge>();
+            int count = 0;
             foreach (Arc arc in graph.Arcs())
             {
-                
                 DirectEdge directEdge = new DirectEdge();
-                directEdge.U = graph.U(arc).Id;
-                directEdge.V = graph.V(arc).Id;
+                directEdge.U.Id = graph.U(arc).Id;
+                if (count == 0)
+                {
+                    // this is the root node , init with distance to self := 0
+                    directEdge.U.DistanceToRoot = 0;
+                }
+                else
+                {
+                    // this is not the root node , init with distance to self := oo
+                    directEdge.U.DistanceToRoot = numberOfNodes;
+                }
+               
+                directEdge.V.Id = graph.V(arc).Id;
+                directEdge.V.DistanceToRoot = 0;
                 directEdge.Cost = arcCost(arc);
                 directEdges.Add(directEdge);
-                Console.WriteLine("U:{0} ----> V:{1} with Cost:{2}", directEdge.U, directEdge.V, directEdge.Cost);
+                Console.WriteLine("U:{0} ----> V:{1} with Cost:{2}", directEdge.U.Id, directEdge.V.Id, directEdge.Cost);
+                count++;
             }
 
             return directEdges;

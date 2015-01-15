@@ -24,18 +24,23 @@ namespace DistributedDeltaStepping
                 Intracommunicator comm = Communicator.world;
                 int numberOfVerticesPerProcessor = numberOfNodes / comm.Size;
                 DirectEdge[] localGraph = new DirectEdge[numberOfVerticesPerProcessor];
-
+                Bucket[] buckets = new Bucket[numberOfNodes];
+                //initialize buckets
+                for (int i = 0; i < numberOfNodes; i++)
+                {
+                    buckets[i] = new Bucket();
+                }
                 if (comm.Rank == 0)
                 {
                     //first create the random graph using .net graph libraries
-                    graph = Utilities.CreateRandomGraph(numberOfNodes);
-
-                    //initialisation phase
                     //root node distance := 0
                     //all other distances of nodes are set to infinite
-                    //create ten nodes
-
-
+                    graph = Utilities.CreateRandomGraph(numberOfNodes);
+                    //add root vertice to first bucket
+                    buckets[0].DirectEdges.Add(graph.First());
+                    //add all other vertices to the last bucket
+                    buckets[numberOfNodes - 1].DirectEdges.AddRange(graph.Skip(1));
+                    //initialisation phase
                 }
                 else // not rank 0
                 {
