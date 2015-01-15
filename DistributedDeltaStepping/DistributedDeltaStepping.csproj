@@ -40,7 +40,7 @@
       <HintPath>packages\MPI.NET.1.2.0.0\lib\net40\MPIUtils.dll</HintPath>
     </Reference>
     <Reference Include="Satsuma">
-      <HintPath>..\Lib\Satsuma.dll</HintPath>
+      <HintPath>Lib\Satsuma.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
