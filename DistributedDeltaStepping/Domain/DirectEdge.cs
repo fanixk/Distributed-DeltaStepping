@@ -7,10 +7,11 @@ using System.Threading.Tasks;
 namespace DistributedDeltaStepping.Domain
 {
     [Serializable]
-    public class Node
+    public class DirectEdge
     {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int DistanceFromRoot { get; set; }
+        public long U { get; set; }
+        public long V { get; set; }
+
+        public double Cost { get; set; }
     }
 }

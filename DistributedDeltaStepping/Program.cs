@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using MPI;
+using Satsuma;
 using DistributedDeltaStepping.Domain;
+using MPI;
 
 namespace DistributedDeltaStepping
 {
@@ -15,39 +16,36 @@ namespace DistributedDeltaStepping
         public const int numberOfNodes = 80;
         static void Main(string[] args)
         {
-            List<Node> nodes = new List<Node>();
             
+            List<DirectEdge> graph = new List<DirectEdge>();
+
             using (new MPI.Environment(ref args))
             {
                 Intracommunicator comm = Communicator.world;
-                int numberOfBuckets = numberOfNodes / comm.Size;
+                int numberOfVerticesPerProcessor = numberOfNodes / comm.Size;
+                DirectEdge[] localGraph = new DirectEdge[numberOfVerticesPerProcessor];
 
                 if (comm.Rank == 0)
                 {
-                    
+                    //first create the random graph using .net graph libraries
+                    graph = Utilities.CreateRandomGraph(numberOfNodes);
+
                     //initialisation phase
                     //root node distance := 0
                     //all other distances of nodes are set to infinite
                     //create ten nodes
-                    nodes = Utilities.FillListWithRandomVertices(numberOfNodes);
 
-                    //root bucket gets only the root node
-                    List<Node> bucketRoot = new List<Node>();
-                    bucketRoot.Add(nodes.FirstOrDefault());
-                    
+
                 }
                 else // not rank 0
                 {
                     // program for all other ranks
                 }
-                comm.Barrier();
 
-                //scatter v all nodes to each processor buckets
-                IEnumerable<Node> bucket = comm.ScatterFromFlattened<Node>(nodes.ToArray(), numberOfBuckets, 0);
-
-                Console.WriteLine("I'm processor {0} and I have {1} nodes in my bucket", comm.Rank, bucket.Count());
-
-                Utilities.ProcessBucket(bucket);
+                //The vertices are equally distributed among the processors
+                localGraph = comm.ScatterFromFlattened(graph.ToArray(), numberOfVerticesPerProcessor, 0);
+                Console.WriteLine("Hello from processor : {0} , I have {1} vertices", comm.Rank, localGraph.Count());
+                
             }
         }
     }

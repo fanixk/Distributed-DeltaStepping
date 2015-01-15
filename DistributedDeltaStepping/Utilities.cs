@@ -3,12 +3,44 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Satsuma;
 using DistributedDeltaStepping.Domain;
 
 namespace DistributedDeltaStepping
 {
     public class Utilities
     {
+
+        /// <summary>
+        /// Create a random graph using random nodes, using Satsuma library for c#
+        /// http://satsumagraph.sourceforge.net/doc/html/p_tutorial.html
+        /// </summary>
+        /// <param name="numberOfNodes">Number of nodes to create</param>
+        /// <returns>returns a complete graph with edges and cost for each edge</returns>
+        public static List<DirectEdge> CreateRandomGraph(int numberOfNodes)
+        {
+            CompleteGraph graph = new CompleteGraph(numberOfNodes, Directedness.Directed); // create a complete graph on 100 nodes
+            var cost = new Dictionary<Node, double>(); // create a cost function on the nodes
+            int i = 0;
+            foreach (Node node in graph.Nodes()) cost[node] = i++; // assign some integral costs to the nodes
+            Func<Arc, double> arcCost =
+                (arc => cost[graph.U(arc)] + cost[graph.V(arc)]); // a cost of an arc will be the sum of the costs of the two nodes
+
+            List<DirectEdge> directEdges = new List<DirectEdge>();
+            foreach (Arc arc in graph.Arcs())
+            {
+                
+                DirectEdge directEdge = new DirectEdge();
+                directEdge.U = graph.U(arc).Id;
+                directEdge.V = graph.V(arc).Id;
+                directEdge.Cost = arcCost(arc);
+                directEdges.Add(directEdge);
+                Console.WriteLine("U:{0} ----> V:{1} with Cost:{2}", directEdge.U, directEdge.V, directEdge.Cost);
+            }
+
+            return directEdges;
+        }
+
         public static void ProcessBucket(IEnumerable<Node> k)
         {
             foreach (Node node in k)
@@ -22,29 +54,6 @@ namespace DistributedDeltaStepping
 
         }
         
-        public static List<Node> FillListWithRandomVertices(int listSize)
-        {
-            
-            Random rnd = new Random();
-            List<Node> verticesList = new List<Node>();
-            for (int i = 0; i < listSize; i++)
-            {
-                Node vertice = new Node();
-                vertice.X = rnd.Next(0, 100);
-                vertice.Y = rnd.Next(0, 100);
-                //set d(rt) <- 0
-                if (i == 0)
-                {
-                    vertice.DistanceFromRoot = 0;
-                }
-                else // for all v != rt, set d(v) <- oo
-                {
-                    vertice.DistanceFromRoot = int.MaxValue;
-                }
-
-                verticesList.Add(vertice);
-            }
-            return verticesList;
-        }
+        
     }
 }
