@@ -20,6 +20,7 @@ namespace DistributedDeltaStepping.Domain
 
         public double Cost { get; set; }
 
+        [Serializable]
         public class Vertice
         {
             public long Id { get; set; }

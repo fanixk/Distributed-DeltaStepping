@@ -62,9 +62,19 @@ namespace DistributedDeltaStepping
             }
         }
 
-        public static void Relax(Node sourceVertex, Node destinationVertex)
+        public static void Relax(DirectEdge edge, Bucket[] buckets, int delta)
         {
-
+            var oldBucketIndex = edge.V.DistanceToRoot / delta;
+            if((edge.U.DistanceToRoot + edge.Cost) < edge.V.DistanceToRoot){
+                edge.V.DistanceToRoot = edge.U.DistanceToRoot + edge.Cost;
+            }
+            var newBucketIndex = edge.V.DistanceToRoot / delta;
+            if (newBucketIndex < oldBucketIndex)
+            {
+                buckets[(int)oldBucketIndex].DirectEdges.Remove(edge);
+                buckets[(int)newBucketIndex].DirectEdges.Add(edge);
+            }
+            
         }
         
         
