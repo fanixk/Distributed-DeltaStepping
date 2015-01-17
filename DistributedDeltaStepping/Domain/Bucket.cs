@@ -10,10 +10,10 @@ namespace DistributedDeltaStepping.Domain
     {
         public Bucket()
         {
-            DirectEdges = new List<DirectEdge>();
+            Vertices = new List<Vertex>();
         }
 
-        public List<DirectEdge> DirectEdges
+        public List<Vertex> Vertices
         {
             get;
             set;

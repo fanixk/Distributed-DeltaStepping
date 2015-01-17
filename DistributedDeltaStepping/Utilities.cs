@@ -32,19 +32,9 @@ namespace DistributedDeltaStepping
             {
                 DirectEdge directEdge = new DirectEdge();
                 directEdge.U.Id = graph.U(arc).Id;
-                if (count == 0)
-                {
-                    // this is the root node , init with distance to self := 0
-                    directEdge.U.DistanceToRoot = 0;
-                }
-                else
-                {
-                    // this is not the root node , init with distance to self := oo
-                    directEdge.U.DistanceToRoot = numberOfNodes;
-                }
-               
+                directEdge.U.DistanceToRoot = 0;
                 directEdge.V.Id = graph.V(arc).Id;
-                directEdge.V.DistanceToRoot = 0;
+               
                 directEdge.Cost = arcCost(arc);
                 directEdges.Add(directEdge);
                 Console.WriteLine("U:{0} ----> V:{1} with Cost:{2}", directEdge.U.Id, directEdge.V.Id, directEdge.Cost);
@@ -52,6 +42,25 @@ namespace DistributedDeltaStepping
             }
 
             return directEdges;
+        }
+
+        public static void InitVertices(ref Vertex[] localVertices, int rank)
+        {
+            int count = 0;
+            foreach (var vertex in localVertices)
+            {
+                if (count == 0 && rank==0)
+                {
+                    // this is the root node , init with distance to self := 0
+                    vertex.DistanceToRoot = 0;
+                }
+                else
+                {
+                    // this is not the root node , init with distance to self := oo
+                    vertex.DistanceToRoot = 999999;
+                }
+                count++;
+            }
         }
 
         public static void ProcessBucket(IEnumerable<Node> k)
@@ -71,8 +80,8 @@ namespace DistributedDeltaStepping
             var newBucketIndex = edge.V.DistanceToRoot / delta;
             if (newBucketIndex < oldBucketIndex)
             {
-                buckets[(int)oldBucketIndex].DirectEdges.Remove(edge);
-                buckets[(int)newBucketIndex].DirectEdges.Add(edge);
+                buckets[(int)oldBucketIndex].Vertices.Remove(edge.V);
+                buckets[(int)newBucketIndex].Vertices.Add(edge.V);
             }
             
         }

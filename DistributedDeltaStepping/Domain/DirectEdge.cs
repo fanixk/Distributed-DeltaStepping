@@ -11,20 +11,20 @@ namespace DistributedDeltaStepping.Domain
     {
         public DirectEdge()
         {
-            this.U = new Vertice();
-            this.V = new Vertice();
+            this.U = new Vertex();
+            this.V = new Vertex();
         }
 
-        public Vertice U { get; set; }
-        public Vertice V { get; set; }
+        public Vertex U { get; set; }
+        public Vertex V { get; set; }
 
         public double Cost { get; set; }
+    }
 
-        [Serializable]
-        public class Vertice
-        {
-            public long Id { get; set; }
-            public double DistanceToRoot { get; set; }
-        }
+    [Serializable]
+    public class Vertex
+    {
+        public long Id { get; set; }
+        public double DistanceToRoot { get; set; }
     }
 }
