@@ -22,6 +22,7 @@ namespace DistributedDeltaStepping
                 Intracommunicator comm = Communicator.world;
                 int numberOfVerticesPerProcessor = numberOfNodes / comm.Size;
                 int k = 99999; //a very large number, theoritically close to infinite
+                int kInit = 99999;
                 //local vertices will have distributed vertices among each processor
                 Vertex[] localVertices = new Vertex[numberOfVerticesPerProcessor];
                 List<Vertex> allVertices = new List<Vertex>();
@@ -53,10 +54,24 @@ namespace DistributedDeltaStepping
                 buckets[k - 1].Vertices.AddRange(localVertices.Skip(1));
                 Console.WriteLine("Hello from processor : {0} , I have {1} vertices", comm.Rank, String.Join(",", localVertices.Select(x=>x.Id)));
                 Console.WriteLine("Processor {0} , have {1} buckets with vertices filled in", comm.Rank, buckets.Where(x=>x.Vertices.Count>0).Count());
-                for (int i = 0; i < k; i++) //Epochs
-                {
-                    //TODO: ProcessBucket(Buckets[i])
+                comm.Barrier();
+                do{
+                    Console.WriteLine("Ready to process bucket[{0}]", k - 1);
+                    Utilities.ProcessBucket(k-1, graph, buckets, Delta, comm, localVertices);
+
+                    //get the smallest index of a bucket that have evertices
+                    Bucket[][] allBuckets = comm.Gather(buckets, comm.Rank);
+                    var allBucketsList = allBuckets.SelectMany(i => i).ToList();
+
+                    k = (int)allBucketsList.Where(x => x.Vertices.Count > 0).Min(x => x.Vertices.Select(y => y.Id)).FirstOrDefault();
+                    Console.WriteLine("new k:{0}", k);
+                    comm.Barrier();
                 }
+                while(k<kInit);
+                comm.Barrier();
+                Console.WriteLine("end");
+                //ftou kai gvainw
+                comm.Abort(0);
             }
         }
     }
