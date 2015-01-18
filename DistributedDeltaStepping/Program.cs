@@ -52,7 +52,7 @@ namespace DistributedDeltaStepping
                 //add all other vertices to the last bucket, Set Boo <- V - {rt}
                 buckets[k - 1].Vertices.AddRange(localVertices.Skip(1));
                 Console.WriteLine("Hello from processor : {0} , I have {1} vertices", comm.Rank, String.Join(",", localVertices.Select(x=>x.Id)));
-                Console.WriteLine("Processor {0} , have {1} buckets", comm.Rank, buckets.Count());
+                Console.WriteLine("Processor {0} , have {1} buckets with vertices filled in", comm.Rank, buckets.Where(x=>x.Vertices.Count>0).Count());
                 for (int i = 0; i < k; i++) //Epochs
                 {
                     //TODO: ProcessBucket(Buckets[i])
