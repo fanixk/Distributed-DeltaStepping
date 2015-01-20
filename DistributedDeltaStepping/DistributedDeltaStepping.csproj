@@ -53,6 +53,7 @@
   <ItemGroup>
     <Compile Include="Domain\Bucket.cs" />
     <Compile Include="Domain\DirectEdge.cs" />
+    <Compile Include="Domain\VertexRequest.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilities.cs" />

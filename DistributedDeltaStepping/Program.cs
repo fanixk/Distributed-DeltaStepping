@@ -57,13 +57,21 @@ namespace DistributedDeltaStepping
                 comm.Barrier();
                 do{
                     Console.WriteLine("Ready to process bucket[{0}]", k - 1);
-                    Utilities.ProcessBucket(k-1, graph, buckets, Delta, comm, localVertices);
+                    Utilities.ProcessBucket(k - 1, graph, buckets, Delta, comm, localVertices, numberOfNodes);
 
+                    List<int> bucketIndexes = new List<int>();
+                    for (int i = 0; i < buckets.Count(); i++)
+                    {
+                        bucketIndexes.Add(i);
+                    }
+
+                    int[] minBucketsIndexes = null;
+                    comm.Allreduce(bucketIndexes.ToArray(), Operation<int>.Min, ref minBucketsIndexes);
                     //get the smallest index of a bucket that have evertices
                     Bucket[][] allBuckets = comm.Gather(buckets, comm.Rank);
                     var allBucketsList = allBuckets.SelectMany(i => i).ToList();
 
-                    k = (int)allBucketsList.Where(x => x.Vertices.Count > 0).Min(x => x.Vertices.Select(y => y.Id)).FirstOrDefault();
+                    k = minBucketsIndexes.FirstOrDefault();
                     Console.WriteLine("new k:{0}", k);
                     comm.Barrier();
                 }

@@ -31,7 +31,7 @@ namespace DistributedDeltaStepping
                 vertex.DistanceToRoot = 0;
                 vertices.Add(vertex);
             }
-            
+
             Func<Arc, double> arcCost =
                 (arc => cost[graph.U(arc)] + cost[graph.V(arc)]); // a cost of an arc will be the sum of the costs of the two nodes
 
@@ -43,7 +43,7 @@ namespace DistributedDeltaStepping
                 directEdge.U.Id = graph.U(arc).Id;
                 directEdge.U.DistanceToRoot = 0;
                 directEdge.V.Id = graph.V(arc).Id;
-               
+
                 directEdge.Cost = arcCost(arc);
                 directEdges.Add(directEdge);
                 Console.WriteLine("U:{0} ----> V:{1} with Cost:{2}", directEdge.U.Id, directEdge.V.Id, directEdge.Cost);
@@ -58,7 +58,7 @@ namespace DistributedDeltaStepping
             int count = 0;
             foreach (var vertex in localVertices)
             {
-                if (count == 0 && rank==0)
+                if (count == 0 && rank == 0)
                 {
                     // this is the root node , init with distance to self := 0
                     vertex.DistanceToRoot = 0;
@@ -80,15 +80,16 @@ namespace DistributedDeltaStepping
         /// <param name="graphStructure"></param>
         /// <param name="buckets"></param>
         /// <param name="delta"></param>
-        public static void Relax(Vertex u, Vertex v, List<DirectEdge> graphStructure, Bucket[] buckets, int delta, out List<Vertex> changedVertices)
+        public static void Relax(Vertex u, Vertex v, List<DirectEdge> graphStructure, ref Bucket[] buckets, int delta, out List<Vertex> changedVertices)
         {
             Console.WriteLine("DoRelax({0}, {1})", u, v);
             //get the direct edge corresponding to source and destination
             var edge = graphStructure.Where(x => x.U.Id == u.Id && x.V.Id == v.Id).FirstOrDefault();
             changedVertices = new List<Vertex>();
             var oldBucketIndex = v.DistanceToRoot / delta;
-            if((u.DistanceToRoot + edge.Cost) < v.DistanceToRoot){
-                v.DistanceToRoot = edge.U.DistanceToRoot + edge.Cost;
+            if ((u.DistanceToRoot + edge.Cost) < v.DistanceToRoot)
+            {
+                v.DistanceToRoot = u.DistanceToRoot + edge.Cost;
                 changedVertices.Add(v);
             }
             var newBucketIndex = v.DistanceToRoot / delta;
@@ -106,8 +107,21 @@ namespace DistributedDeltaStepping
         /// <param name="graphStructure"></param>
         /// <param name="buckets"></param>
         /// <param name="delta"></param>
-        public static void ProcessBucket(int k, List<DirectEdge> graphStructure, Bucket[] buckets, int delta, Intracommunicator comm, Vertex[] localVertices)
+        public static void ProcessBucket(int k, List<DirectEdge> graphStructure, Bucket[] buckets, int delta, Intracommunicator comm, Vertex[] localVertices, int totalVertices)
         {
+            //first check if another processor is asking a vertex from this processor
+            VertexRequest[] vertexRequests = null;
+            //comm.Receive(MPI.Communicator.anySource, 1, out vertexRequest);
+            var req = comm.ImmediateReceive(MPI.Communicator.anySource, 1, vertexRequests);
+            if (vertexRequests != null && vertexRequests.Length > 0)
+            {
+                foreach (var vertexRequest in vertexRequests)
+                {
+                    var foundVertex = localVertices.FirstOrDefault(x => x.Id == vertexRequest.VertexId);
+                    vertexRequest.ResponseVertex = foundVertex;
+                    comm.Send(vertexRequest, vertexRequest.RequestProcessorRank, 1);
+                }
+            }
             var activeBucket = buckets[k];
 
             IList<Vertex> activeVertices = new List<Vertex>();
@@ -117,7 +131,7 @@ namespace DistributedDeltaStepping
             {
                 Console.WriteLine("loop count {0}", ++count);
                 //if its the first iteration all vertices are treated as active vertices
-                
+
                 var changedVertices = new List<Vertex>();
 
                 // foreach u E A and for each edge e = {u,v}
@@ -131,16 +145,19 @@ namespace DistributedDeltaStepping
                         if (localVertices.All(x => x.Id != edge.V.Id))
                         {
                             //we didnt find the processing vertex , ask other processors
-                            var gatheredVertices = comm.Gather(localVertices, comm.Rank);
-                            var gatheredVerticesList = gatheredVertices.SelectMany(i => i).ToList();
-                            v = gatheredVerticesList.FirstOrDefault(x => x.Id == edge.V.Id);
+                            int processorWithWantedVertex = (int)(edge.V.Id / (totalVertices / comm.Size));
+                            VertexRequest wantedVertex = new VertexRequest() { VertexId = edge.V.Id, RequestProcessorRank = comm.Rank };
+                            VertexRequest foundVertex = null;
+                            comm.SendReceive(wantedVertex, processorWithWantedVertex, 1, out foundVertex);
+                            v = foundVertex.ResponseVertex;
                         }
                         else
                         {
                             v = localVertices.FirstOrDefault(x => x.Id == edge.V.Id);
                         }
-                       
-                        Relax(u, v, graphStructure, buckets, delta, out changedVertices);
+
+                        Relax(u, v, graphStructure, ref buckets, delta, out changedVertices);
+                        Console.WriteLine("DoRelax finished, changed vertices : {0}", String.Join(",", changedVertices.Select(x=>x.Id).ToList()));
                     }
                 }
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
@@ -148,12 +165,15 @@ namespace DistributedDeltaStepping
                 //intersection of two sets, active vertices and changed vertices
                 foreach (Vertex changedVertex in changedVertices)
                 {
-                    if (activeVertices.Any(x=> x.Id == changedVertex.Id))
+                    if (activeVertices.Any(x => x.Id == changedVertex.Id))
                     {
                         newActiveVertices.Add(changedVertex);
                     }
                 }
-                activeVertices = newActiveVertices;
+                if (newActiveVertices.Count > 0)
+                {
+                    activeVertices = newActiveVertices;
+                }
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
             }
         }
