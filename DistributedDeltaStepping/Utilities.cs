@@ -82,7 +82,7 @@ namespace DistributedDeltaStepping
         /// <param name="delta"></param>
         public static void Relax(Vertex u, Vertex v, List<DirectEdge> graphStructure, ref Bucket[] buckets, int delta, out List<Vertex> changedVertices)
         {
-            Console.WriteLine("DoRelax({0}, {1})", u, v);
+            //Console.WriteLine("DoRelax({0}, {1})", u.Id, v.Id);
             //get the direct edge corresponding to source and destination
             var edge = graphStructure.Where(x => x.U.Id == u.Id && x.V.Id == v.Id).FirstOrDefault();
             changedVertices = new List<Vertex>();
@@ -90,11 +90,12 @@ namespace DistributedDeltaStepping
             if ((u.DistanceToRoot + edge.Cost) < v.DistanceToRoot)
             {
                 v.DistanceToRoot = u.DistanceToRoot + edge.Cost;
-                changedVertices.Add(v);
+
             }
             var newBucketIndex = v.DistanceToRoot / delta;
             if (newBucketIndex < oldBucketIndex)
             {
+                changedVertices.Add(v);
                 buckets[(int)oldBucketIndex].Vertices.Remove(v);
                 buckets[(int)newBucketIndex].Vertices.Add(v);
             }
@@ -107,32 +108,22 @@ namespace DistributedDeltaStepping
         /// <param name="graphStructure"></param>
         /// <param name="buckets"></param>
         /// <param name="delta"></param>
-        public static void ProcessBucket(int k, List<DirectEdge> graphStructure, Bucket[] buckets, int delta, Intracommunicator comm, Vertex[] localVertices, int totalVertices)
+        public static void ProcessBucket(ref Bucket bucketToProcess, List<DirectEdge> graphStructure, ref Bucket[] buckets, int delta, Intracommunicator comm, Vertex[] localVertices, int totalVertices)
         {
-            //first check if another processor is asking a vertex from this processor
-            VertexRequest[] vertexRequests = null;
-            //comm.Receive(MPI.Communicator.anySource, 1, out vertexRequest);
-            var req = comm.ImmediateReceive(MPI.Communicator.anySource, 1, vertexRequests);
-            if (vertexRequests != null && vertexRequests.Length > 0)
-            {
-                foreach (var vertexRequest in vertexRequests)
-                {
-                    var foundVertex = localVertices.FirstOrDefault(x => x.Id == vertexRequest.VertexId);
-                    vertexRequest.ResponseVertex = foundVertex;
-                    comm.Send(vertexRequest, vertexRequest.RequestProcessorRank, 1);
-                }
-            }
-            var activeBucket = buckets[k];
+
+            var activeBucket = bucketToProcess;
 
             IList<Vertex> activeVertices = new List<Vertex>();
             activeBucket.Vertices.ForEach(x => activeVertices.Add(x));
+
             int count = 0;
-            while (activeVertices.Count() > 0)
+            do
             {
                 Console.WriteLine("loop count {0}", ++count);
                 //if its the first iteration all vertices are treated as active vertices
 
                 var changedVertices = new List<Vertex>();
+
 
                 // foreach u E A and for each edge e = {u,v}
                 foreach (Vertex u in activeVertices)
@@ -141,26 +132,26 @@ namespace DistributedDeltaStepping
                     var edges = graphStructure.Where(x => x.U.Id == u.Id);
                     foreach (DirectEdge edge in edges)
                     {
+                        //we didnt find the processing vertex , ask other processors
+                        //int processorWithWantedVertex = (int)(edge.V.Id / (totalVertices / comm.Size));
+                        v = localVertices.FirstOrDefault(x => x.Id == edge.V.Id);
                         //check if we have the processing destination vertex
-                        if (localVertices.All(x => x.Id != edge.V.Id))
+                        if (v == null)
                         {
-                            //we didnt find the processing vertex , ask other processors
-                            int processorWithWantedVertex = (int)(edge.V.Id / (totalVertices / comm.Size));
+                            /*
                             VertexRequest wantedVertex = new VertexRequest() { VertexId = edge.V.Id, RequestProcessorRank = comm.Rank };
                             VertexRequest foundVertex = null;
                             comm.SendReceive(wantedVertex, processorWithWantedVertex, 1, out foundVertex);
                             v = foundVertex.ResponseVertex;
-                        }
-                        else
-                        {
-                            v = localVertices.FirstOrDefault(x => x.Id == edge.V.Id);
+                            Console.WriteLine("Processor {0} sends to {1} a vertex request for vertex {2}", comm.Rank, processorWithWantedVertex, wantedVertex.VertexId);*/
+                            v = edge.V;
                         }
 
                         Relax(u, v, graphStructure, ref buckets, delta, out changedVertices);
-                        Console.WriteLine("DoRelax finished, changed vertices : {0}", String.Join(",", changedVertices.Select(x=>x.Id).ToList()));
+                        //Console.WriteLine("DoRelax finished, changed vertices : {0}", String.Join(",", changedVertices.Select(x => x.Id).ToList()));
                     }
                 }
-                Console.WriteLine("New active vertices : {0}", activeVertices.Count);
+
                 List<Vertex> newActiveVertices = new List<Vertex>();
                 //intersection of two sets, active vertices and changed vertices
                 foreach (Vertex changedVertex in changedVertices)
@@ -176,6 +167,7 @@ namespace DistributedDeltaStepping
                 }
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
             }
+            while (activeVertices.Count() == 0);
         }
     }
 }

@@ -13,7 +13,7 @@ namespace DistributedDeltaStepping
     {
         //Delta Constant integer
         public const int Delta = 1;
-        public const int numberOfNodes = 80;
+        public const int numberOfNodes = 40;
         static void Main(string[] args)
         {
             List<DirectEdge> graph = new List<DirectEdge>();
@@ -55,25 +55,28 @@ namespace DistributedDeltaStepping
                 Console.WriteLine("Hello from processor : {0} , I have {1} vertices", comm.Rank, String.Join(",", localVertices.Select(x=>x.Id)));
                 Console.WriteLine("Processor {0} , have {1} buckets with vertices filled in", comm.Rank, buckets.Where(x=>x.Vertices.Count>0).Count());
                 comm.Barrier();
+                k = 0;
                 do{
-                    Console.WriteLine("Ready to process bucket[{0}]", k - 1);
-                    Utilities.ProcessBucket(k - 1, graph, buckets, Delta, comm, localVertices, numberOfNodes);
-
+                    var bucketToProcess = buckets[k];              
+                    Console.WriteLine("Ready to process bucket[{0}]", k);
+                    Utilities.ProcessBucket(ref bucketToProcess, graph, ref buckets, Delta, comm, localVertices, numberOfNodes);
+                    comm.Barrier();
+                    Console.WriteLine("Finished process of bucket[{0}]", k);
                     List<int> bucketIndexes = new List<int>();
                     for (int i = 0; i < buckets.Count(); i++)
                     {
-                        bucketIndexes.Add(i);
+                        if (buckets.Count() > 1)
+                        {
+                            bucketIndexes.Add(i);
+                        }
                     }
 
                     int[] minBucketsIndexes = null;
                     comm.Allreduce(bucketIndexes.ToArray(), Operation<int>.Min, ref minBucketsIndexes);
-                    //get the smallest index of a bucket that have evertices
-                    Bucket[][] allBuckets = comm.Gather(buckets, comm.Rank);
-                    var allBucketsList = allBuckets.SelectMany(i => i).ToList();
 
                     k = minBucketsIndexes.FirstOrDefault();
                     Console.WriteLine("new k:{0}", k);
-                    comm.Barrier();
+                    
                 }
                 while(k<kInit);
                 comm.Barrier();
