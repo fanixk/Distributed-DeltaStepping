@@ -44,7 +44,7 @@ namespace DistributedDeltaStepping
                 localVertices = comm.ScatterFromFlattened(allVertices.ToArray(), numberOfVerticesPerProcessor, 0);
                 //root node distance := 0
                 //all other distances of nodes are set to infinite
-                Utilities.InitVertices(ref localVertices, comm.Rank);
+                Utilities.InitVertices(ref localVertices, comm.Rank, kInit);
                 if (comm.Rank == 0)
                 {
                     //add root vertice to first bucket, Set B0 <- {rt}
@@ -62,21 +62,26 @@ namespace DistributedDeltaStepping
                     Utilities.ProcessBucket(ref bucketToProcess, graph, ref buckets, Delta, comm, localVertices, numberOfNodes);
                     comm.Barrier();
                     Console.WriteLine("Finished process of bucket[{0}]", k);
-                    List<int> bucketIndexes = new List<int>();
-                    for (int i = 0; i < buckets.Count(); i++)
+                    int[] bucketIndexes = new int[kInit];
+                    for (int i = 1; i < buckets.Count(); i++)
                     {
-                        if (buckets.Count() > 1)
+                        if (buckets[i].Vertices.Count() > 0)
                         {
-                            bucketIndexes.Add(i);
+                            bucketIndexes[i] = i;
                         }
                     }
 
-                    int[] minBucketsIndexes = null;
+                    int[] minBucketsIndexes = new int[kInit];
+                    bucketIndexes = bucketIndexes.Where(x => x != 0).ToArray();
+                    //minBucketsIndexes = comm.Reduce(bucketIndexes.ToArray(), Operation<int>.Min, 0);
+                    //if (minBucketsIndexes == null)  minBucketsIndexes = new int[kInit]; 
+                    //comm.Broadcast(ref minBucketsIndexes, 0);
                     comm.Allreduce(bucketIndexes.ToArray(), Operation<int>.Min, ref minBucketsIndexes);
+                    //Console.WriteLine(String.Join(",", minBucketsIndexes));
+                    k = minBucketsIndexes.FirstOrDefault(x=>x!=0);
 
-                    k = minBucketsIndexes.FirstOrDefault();
                     Console.WriteLine("new k:{0}", k);
-                    
+                    comm.Barrier();
                 }
                 while(k<kInit);
                 comm.Barrier();

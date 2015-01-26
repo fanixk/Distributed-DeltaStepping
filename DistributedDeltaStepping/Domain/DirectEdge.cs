@@ -18,13 +18,13 @@ namespace DistributedDeltaStepping.Domain
         public Vertex U { get; set; }
         public Vertex V { get; set; }
 
-        public double Cost { get; set; }
+        public int Cost { get; set; }
     }
 
     [Serializable]
     public class Vertex
     {
         public long Id { get; set; }
-        public double DistanceToRoot { get; set; }
+        public int DistanceToRoot { get; set; }
     }
 }
