@@ -120,14 +120,15 @@ namespace DistributedDeltaStepping
 
             int count = 0;
 
+            var allVertices = comm.AllgatherFlattened(localVertices, localVertices.Count());
+            Console.WriteLine("{0}", allVertices.Count());
             while(activeVertices.Count() != 0)
             {
                 //Console.WriteLine("loop count {0}", ++count);
                 //if its the first iteration all vertices are treated as active vertices
 
                 var changedVertices = new List<Vertex>();
-
-
+                
                 // foreach u E A and for each edge e = {u,v}
                 foreach (Vertex u in activeVertices)
                 {
@@ -149,15 +150,14 @@ namespace DistributedDeltaStepping
                             v = foundVertex.ResponseVertex;
                             Console.WriteLine("Processor {0} sends to {1} a vertex request for vertex {2}", comm.Rank, processorWithWantedVertex, wantedVertex.VertexId);
                             //comm.Gather(v, comm.Rank);*/
-                            var allVertices = comm.AllgatherFlattened(localVertices, 40);
-                            comm.Barrier();
+                            
                             v = allVertices.FirstOrDefault(x => x.Id == edge.V.Id);
                         }
                        
                         Relax(u, v, graphStructure, ref buckets, delta, out changedVertices);
                         Console.WriteLine("DoRelax finished, changed vertices : {0}", String.Join(",", changedVertices.Select(x => x.Id).ToList()));
                     }
-                    comm.Barrier();
+                   
                 }
 
                 List<Vertex> newActiveVertices = new List<Vertex>();
@@ -174,6 +174,7 @@ namespace DistributedDeltaStepping
                     activeVertices = newActiveVertices;
                 }
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
+                comm.Barrier();
             }
             
         }
