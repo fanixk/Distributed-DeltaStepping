@@ -93,7 +93,6 @@ namespace DistributedDeltaStepping
             if ((u.DistanceToRoot + edge.Cost) < v.DistanceToRoot)
             {
                 v.DistanceToRoot = u.DistanceToRoot + edge.Cost;
-                changedVertices.Add(v);
             }
             int newBucketIndex = v.DistanceToRoot / delta;
             Console.WriteLine("old {0} new {1}", oldBucketIndex, newBucketIndex);
@@ -104,6 +103,8 @@ namespace DistributedDeltaStepping
                 {
                     newBucketIndex = newBucketIndex - 1;
                 }
+                changedVertices.Add(v);
+
                 buckets[newBucketIndex].Vertices.Add(v);
             }
         }
@@ -121,22 +122,23 @@ namespace DistributedDeltaStepping
             var activeBucket = bucketToProcess;
 
             List<Vertex> activeVertices = new List<Vertex>();
-            activeBucket.Vertices.ForEach(x => activeVertices.Add(x));
-
+            activeVertices.AddRange(activeBucket.Vertices);
             int count = 0;
 
             var allVertices = comm.AllgatherFlattened(localVertices, localVertices.Count());
-            Console.WriteLine("Active Vertices : {0}", String.Join(",", activeVertices));
-            var changedVertices = new List<Vertex>();
+            Console.WriteLine("Active Vertices : {0}", String.Join(",", activeVertices.Select(x=>x.Id)));
+
             while(activeVertices.Count() > 0)
             {
                 //Console.WriteLine("loop count {0}", ++count);
                 //if its the first iteration all vertices are treated as active vertices
 
+                var changedVertices = new List<Vertex>();
                               
                 // foreach u E A and for each edge e = {u,v}
                 for (int i = 0; i < activeVertices.Count; i++)
                 {
+                    Console.WriteLine("KOLLAW");
                     Vertex u = activeVertices[i];
                     Vertex v = null;
                     var edges = graphStructure.Where(x => x.U.Id == u.Id);
@@ -161,28 +163,33 @@ namespace DistributedDeltaStepping
                         }
 
                         Relax(ref u, ref v, graphStructure, ref buckets, delta, ref changedVertices);
-                        Console.WriteLine("DoRelax finished, changed vertices : {0}", String.Join(",", changedVertices.Select(x => x.Id).ToList()));
+                        Console.WriteLine("DoRelax finished, changed vertices : {0}",changedVertices.Count());
                     }
                 }
-  
 
                 List<Vertex> newActiveVertices = new List<Vertex>();
                 //intersection of two sets, active vertices and changed vertices
-                foreach (Vertex changedVertex in changedVertices)
-                {
-                    if (activeVertices.Any(x => x.Id == changedVertex.Id))
-                    {
-                        newActiveVertices.Add(changedVertex);
-                    }
-                }
-                if (newActiveVertices.Count > 0)
-                {
-                    activeVertices.Clear();
-                    activeVertices.AddRange(newActiveVertices);
-                }
+                //foreach (Vertex changedVertex in changedVertices)
+                //{
+                //    if (activeVertices.Any(x => x.Id == changedVertex.Id))
+                //    {
+                //        newActiveVertices.Add(changedVertex);
+                //    }
+                //}
+                //if (newActiveVertices.Count > 0)
+                //{
+                //    activeVertices.Clear();
+                //    activeVertices.AddRange(newActiveVertices);
+                //}
+
+                activeVertices.Clear();
+                activeVertices.AddRange(changedVertices);
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
+
+                //comm.Barrier();
             }
-            
+            comm.Barrier();
+
         }
     }
 }

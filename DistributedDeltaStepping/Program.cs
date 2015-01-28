@@ -21,8 +21,8 @@ namespace DistributedDeltaStepping
             {
                 Intracommunicator comm = Communicator.world;
                 int numberOfVerticesPerProcessor = numberOfNodes / comm.Size;
-                int k = 99999; //a very large number, theoritically close to infinite
-                int kInit = 99999;
+                int k = 1000; //a very large number, theoritically close to infinite
+                int kInit = 1000;
                 //local vertices will have distributed vertices among each processor
                 Vertex[] localVertices = new Vertex[numberOfVerticesPerProcessor];
                 List<Vertex> allVertices = new List<Vertex>();
@@ -76,9 +76,10 @@ namespace DistributedDeltaStepping
                     //minBucketsIndexes = comm.Reduce(bucketIndexes.ToArray(), Operation<int>.Min, 0);
                     //if (minBucketsIndexes == null)  minBucketsIndexes = new int[kInit]; 
                     //comm.Broadcast(ref minBucketsIndexes, 0);
-                    comm.Allreduce(bucketIndexes.ToArray(), Operation<int>.Min, ref minBucketsIndexes);
+                    var min = bucketIndexes.Where(x => x != 0).ToArray(); ;
+                    comm.Allreduce(min, Operation<int>.Min, ref minBucketsIndexes);
                     //Console.WriteLine(String.Join(",", minBucketsIndexes));
-                    k = minBucketsIndexes.FirstOrDefault(x=>x!=0);
+                    k = minBucketsIndexes.Min();
 
                     Console.WriteLine("new k:{0}", k);
                     comm.Barrier();
