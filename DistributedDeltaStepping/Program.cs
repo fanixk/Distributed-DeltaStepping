@@ -63,16 +63,16 @@ namespace DistributedDeltaStepping
                     comm.Barrier();
                     Console.WriteLine("Finished process of bucket[{0}]", k);
                     int[] bucketIndexes = new int[kInit];
-                    for (int i = 1; i < buckets.Count(); i++)
+                    for (int i = k; i < buckets.Count(); i++)
                     {
                         if (buckets[i].Vertices.Count() > 0)
                         {
                             bucketIndexes[i] = i;
                         }
                     }
-
+                    comm.Barrier();
                     int[] minBucketsIndexes = new int[kInit];
-                    bucketIndexes = bucketIndexes.Where(x => x != 0).ToArray();
+                    bucketIndexes = bucketIndexes.ToArray();
                     //minBucketsIndexes = comm.Reduce(bucketIndexes.ToArray(), Operation<int>.Min, 0);
                     //if (minBucketsIndexes == null)  minBucketsIndexes = new int[kInit]; 
                     //comm.Broadcast(ref minBucketsIndexes, 0);
