@@ -89,13 +89,13 @@ namespace DistributedDeltaStepping
             var edge = graphStructure.Where(x => x.U.Id == uId && x.V.Id == vId).FirstOrDefault();
 
             int oldBucketIndex = v.DistanceToRoot / delta;
-            Console.WriteLine("d(v) = {0}", v.DistanceToRoot);
+            //Console.WriteLine("d(v) = {0}", v.DistanceToRoot);
             if ((u.DistanceToRoot + edge.Cost) < v.DistanceToRoot)
             {
                 v.DistanceToRoot = u.DistanceToRoot + edge.Cost;
             }
             int newBucketIndex = v.DistanceToRoot / delta;
-            Console.WriteLine("old {0} new {1}", oldBucketIndex, newBucketIndex);
+            //Console.WriteLine("old {0} new {1}", oldBucketIndex, newBucketIndex);
             if (newBucketIndex < oldBucketIndex)
             {
                 buckets[oldBucketIndex-1].Vertices.Remove(v);
@@ -103,9 +103,13 @@ namespace DistributedDeltaStepping
                 {
                     newBucketIndex = newBucketIndex - 1;
                 }
-                changedVertices.Add(v);
 
                 buckets[newBucketIndex].Vertices.Add(v);
+            }
+            else if (newBucketIndex == oldBucketIndex)
+            {
+                changedVertices.Clear();
+                changedVertices.Add(v);
             }
         }
 
@@ -118,27 +122,23 @@ namespace DistributedDeltaStepping
         /// <param name="delta"></param>
         public static void ProcessBucket(ref Bucket bucketToProcess, List<DirectEdge> graphStructure, ref Bucket[] buckets, int delta, Intracommunicator comm, Vertex[] localVertices, int totalVertices)
         {
-
             var activeBucket = bucketToProcess;
 
             List<Vertex> activeVertices = new List<Vertex>();
             activeVertices.AddRange(activeBucket.Vertices);
-            int count = 0;
 
             var allVertices = comm.AllgatherFlattened(localVertices, localVertices.Count());
             Console.WriteLine("Active Vertices : {0}", String.Join(",", activeVertices.Select(x=>x.Id)));
+            var changedVertices = new List<Vertex>();
 
             while(activeVertices.Count() > 0)
             {
                 //Console.WriteLine("loop count {0}", ++count);
                 //if its the first iteration all vertices are treated as active vertices
 
-                var changedVertices = new List<Vertex>();
-                              
                 // foreach u E A and for each edge e = {u,v}
                 for (int i = 0; i < activeVertices.Count; i++)
                 {
-                    Console.WriteLine("KOLLAW");
                     Vertex u = activeVertices[i];
                     Vertex v = null;
                     var edges = graphStructure.Where(x => x.U.Id == u.Id);
@@ -163,19 +163,19 @@ namespace DistributedDeltaStepping
                         }
 
                         Relax(ref u, ref v, graphStructure, ref buckets, delta, ref changedVertices);
-                        Console.WriteLine("DoRelax finished, changed vertices : {0}",changedVertices.Count());
+                        //Console.WriteLine("DoRelax finished, changed vertices : {0}",changedVertices.Count());
                     }
                 }
 
                 List<Vertex> newActiveVertices = new List<Vertex>();
                 //intersection of two sets, active vertices and changed vertices
-                //foreach (Vertex changedVertex in changedVertices)
-                //{
-                //    if (activeVertices.Any(x => x.Id == changedVertex.Id))
-                //    {
-                //        newActiveVertices.Add(changedVertex);
-                //    }
-                //}
+                foreach (Vertex changedVertex in changedVertices)
+                {
+                    if (activeVertices.Any(x => x.Id == changedVertex.Id))
+                    {
+                        newActiveVertices.Add(changedVertex);
+                    }
+                }
                 //if (newActiveVertices.Count > 0)
                 //{
                 //    activeVertices.Clear();
@@ -183,10 +183,8 @@ namespace DistributedDeltaStepping
                 //}
 
                 activeVertices.Clear();
-                activeVertices.AddRange(changedVertices);
+                activeVertices.AddRange(newActiveVertices);
                 Console.WriteLine("New active vertices : {0}", activeVertices.Count);
-
-                //comm.Barrier();
             }
             comm.Barrier();
 

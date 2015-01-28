@@ -60,9 +60,10 @@ namespace DistributedDeltaStepping
                     var bucketToProcess = buckets[k];              
                     Console.WriteLine("Ready to process bucket[{0}]", k);
                     Utilities.ProcessBucket(ref bucketToProcess, graph, ref buckets, Delta, comm, localVertices, numberOfNodes);
-                    comm.Barrier();
                     Console.WriteLine("Finished process of bucket[{0}]", k);
+
                     int[] bucketIndexes = new int[kInit];
+                    
                     for (int i = k; i < buckets.Count(); i++)
                     {
                         if (buckets[i].Vertices.Count() > 0)
@@ -70,16 +71,38 @@ namespace DistributedDeltaStepping
                             bucketIndexes[i] = i;
                         }
                     }
-                    comm.Barrier();
-                    int[] minBucketsIndexes = new int[kInit];
-                    bucketIndexes = bucketIndexes.ToArray();
-                    //minBucketsIndexes = comm.Reduce(bucketIndexes.ToArray(), Operation<int>.Min, 0);
-                    //if (minBucketsIndexes == null)  minBucketsIndexes = new int[kInit]; 
-                    //comm.Broadcast(ref minBucketsIndexes, 0);
-                    var min = bucketIndexes.Where(x => x != 0).ToArray(); ;
-                    comm.Allreduce(min, Operation<int>.Min, ref minBucketsIndexes);
-                    //Console.WriteLine(String.Join(",", minBucketsIndexes));
-                    k = minBucketsIndexes.Min();
+                    //Console.WriteLine("KOLLAW");
+                    int [] minBucketIndexes = new int[kInit];
+                    //Console.WriteLine("KOLLAW2");
+                    
+                    //calc min at processor 0
+                    comm.Gather(bucketIndexes, 0);
+                    if (comm.Rank == 0)
+                    {   
+                            bucketIndexes = bucketIndexes.Where(x => x != 0 && x > k).ToArray();
+                            if (bucketIndexes.Count() != 0) {
+                                k = bucketIndexes.Min();
+                            }
+                            else
+                            {
+                                k = kInit;
+                            }
+                    }
+                    comm.Broadcast(ref k, 0);
+                    //comm.Reduce(bucketIndexes, Operation<int>.Min, 0, ref minBucketIndexes);
+                    //minBucketIndexes = minBucketIndexes.ToList().Where(x => x != 0).ToArray();
+                    //comm.Broadcast(ref minBucketIndexes, 0);
+                    //Console.WriteLine("KOLLAW3");
+
+                    //if (minBucketIndexes.Count() != 0)
+                    //{
+                    //    k = minBucketIndexes.Min();
+
+                    //}
+                    //else
+                    //{
+                    //    k = kInit - 1;
+                    //}
 
                     Console.WriteLine("new k:{0}", k);
                     comm.Barrier();
