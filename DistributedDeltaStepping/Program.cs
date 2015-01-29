@@ -58,9 +58,9 @@ namespace DistributedDeltaStepping
                 k = 0;
                 do{
                     var bucketToProcess = buckets[k];              
-                    Console.WriteLine("Ready to process bucket[{0}]", k);
+                    Console.WriteLine("P[{1}] Ready to process bucket[{0}]", k, comm.Rank);
                     Utilities.ProcessBucket(ref bucketToProcess, graph, ref buckets, Delta, comm, localVertices, numberOfNodes);
-                    Console.WriteLine("Finished process of bucket[{0}]", k);
+                    Console.WriteLine("P[{1}] Finished process of bucket[{0}]", k, comm.Rank);
 
                     int[] bucketIndexes = new int[kInit];
                     
