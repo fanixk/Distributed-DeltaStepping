@@ -81,12 +81,13 @@ namespace DistributedDeltaStepping
                     }
                     k = comm.Allreduce(min, Operation<int>.Min);
     
-                    Console.WriteLine("new k:{0}", k);
+                    //Console.WriteLine("new k:{0}", k);
                     comm.Barrier();
                 }
                 while(k<kInit);
 
                 comm.Barrier();
+                if (comm.Rank == 0) Console.WriteLine("Terminated successfully!");
             }
         }
     }
