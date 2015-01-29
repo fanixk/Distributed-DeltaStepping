@@ -100,7 +100,7 @@ namespace DistributedDeltaStepping
             //Console.WriteLine("old {0} new {1}", oldBucketIndex, newBucketIndex);
             if (newBucketIndex < oldBucketIndex)
             {
-                buckets[oldBucketIndex].Vertices.Remove(v);
+                buckets[oldBucketIndex-1].Vertices.Remove(v);
                 if (newBucketIndex > 0)
                 {
                     newBucketIndex = newBucketIndex - 1;
