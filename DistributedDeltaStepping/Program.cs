@@ -12,7 +12,7 @@ namespace DistributedDeltaStepping
     class Program
     {
         //Delta Constant integer
-        public const int Delta = 1;
+        public const int Delta = 10;
         public const int numberOfNodes = 40;
         static void Main(string[] args)
         {
@@ -71,47 +71,22 @@ namespace DistributedDeltaStepping
                             bucketIndexes[i] = i;
                         }
                     }
-                    //Console.WriteLine("KOLLAW");
-                    int [] minBucketIndexes = new int[kInit];
-                    //Console.WriteLine("KOLLAW2");
                     
-                    //calc min at processor 0
-                    comm.Gather(bucketIndexes, 0);
-                    if (comm.Rank == 0)
-                    {   
-                            bucketIndexes = bucketIndexes.Where(x => x != 0 && x > k).ToArray();
-                            if (bucketIndexes.Count() != 0) {
-                                k = bucketIndexes.Min();
-                            }
-                            else
-                            {
-                                k = kInit;
-                            }
+                    int min = kInit;
+                    bucketIndexes = bucketIndexes.Where(x => x != 0 && x > k).ToArray();
+
+                    if (bucketIndexes.Count() != 0)
+                    {
+                        min = bucketIndexes.Min();
                     }
-                    comm.Broadcast(ref k, 0);
-                    //comm.Reduce(bucketIndexes, Operation<int>.Min, 0, ref minBucketIndexes);
-                    //minBucketIndexes = minBucketIndexes.ToList().Where(x => x != 0).ToArray();
-                    //comm.Broadcast(ref minBucketIndexes, 0);
-                    //Console.WriteLine("KOLLAW3");
-
-                    //if (minBucketIndexes.Count() != 0)
-                    //{
-                    //    k = minBucketIndexes.Min();
-
-                    //}
-                    //else
-                    //{
-                    //    k = kInit - 1;
-                    //}
-
+                    k = comm.Allreduce(min, Operation<int>.Min);
+    
                     Console.WriteLine("new k:{0}", k);
                     comm.Barrier();
                 }
                 while(k<kInit);
+
                 comm.Barrier();
-                Console.WriteLine("end");
-                //ftou kai gvainw
-                comm.Abort(0);
             }
         }
     }
