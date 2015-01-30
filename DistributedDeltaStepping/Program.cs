@@ -28,7 +28,7 @@ namespace DistributedDeltaStepping
                 List<Vertex> allVertices = new List<Vertex>();
                 Bucket[] buckets = new Bucket[k];
                 //initialize buckets
-                //for k=1,2,3,4......n set Bk <- 0
+                //For k = 1,2,...,, set Bk ← ∅.
                 for (int i = 0; i < k; i++)
                 {
                     buckets[i] = new Bucket();
@@ -44,6 +44,8 @@ namespace DistributedDeltaStepping
                 localVertices = comm.ScatterFromFlattened(allVertices.ToArray(), numberOfVerticesPerProcessor, 0);
                 //root node distance := 0
                 //all other distances of nodes are set to infinite
+                
+                //Set B0 ← {rt} and B∞ ← V − {rt}. 
                 Utilities.InitVertices(ref localVertices, comm.Rank, kInit);
                 if (comm.Rank == 0)
                 {
@@ -55,13 +57,14 @@ namespace DistributedDeltaStepping
                 Console.WriteLine("Hello from processor : {0} , I have {1} vertices", comm.Rank, String.Join(",", localVertices.Select(x=>x.Id)));
                 Console.WriteLine("Processor {0} , have {1} buckets with vertices filled in", comm.Rank, buckets.Where(x=>x.Vertices.Count>0).Count());
                 comm.Barrier();
+                //∆-Stepping Algorithm k ← 0. Loop // Epochs 
                 k = 0;
                 do{
                     var bucketToProcess = buckets[k];              
                     Console.WriteLine("P[{1}] Ready to process bucket[{0}]", k, comm.Rank);
                     Utilities.ProcessBucket(ref bucketToProcess, graph, ref buckets, Delta, comm, localVertices, numberOfNodes);
                     Console.WriteLine("P[{1}] Finished process of bucket[{0}]", k, comm.Rank);
-
+                    //Next bucket index : k ← min{i > k : Bi := ∅}. 
                     int[] bucketIndexes = new int[kInit];
                     
                     for (int i = k; i < buckets.Count(); i++)
@@ -79,9 +82,10 @@ namespace DistributedDeltaStepping
                     {
                         min = bucketIndexes.Min();
                     }
+                    // Termination checks and computing the next bucket index require Allreduce operations.
                     k = comm.Allreduce(min, Operation<int>.Min);
-    
-                    //Console.WriteLine("new k:{0}", k);
+
+                    // The iterations and epochs are executed in a bulk synchronous manner, thus a barrier is needed
                     comm.Barrier();
                 }
                 while(k<kInit);
